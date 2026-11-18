@@ -182,9 +182,10 @@ let S=load(),tab='home',filter='All';S.trips.forEach(norm);
 const T=()=>S.trips.find(t=>t.id===S.current)||S.trips[0];
 const CPAL=['#d96c6c','#6c8fd9','#4fb89a','#c79a3d','#9c6cd9','#d96cb5','#5fb0c9','#8aa84f'];
 const SAFE=/^[^'"`\\<>&]+$/;
+function catBadge(k,sz){sz=sz||44;const c=CCOL[k]||CCOL.Other||'#94a3ad';return `<div class="ic" style="background:${c}26;color:${c};width:${sz}px;height:${sz}px;font-size:${Math.round(sz*.42)}px;font-weight:800">${esc((k||'?').charAt(0).toUpperCase())}</div>`}
 function applyCats(t){
  [CATS,CCOL].forEach(o=>Object.keys(o).forEach(k=>delete o[k]));
- Object.keys(DEF_CATS).filter(k=>k!=='Other').forEach(k=>{CATS[k]=DEF_CATS[k];CCOL[k]=DEF_COL[k]});
+ Object.keys(DEF_CATS).filter(k=>k!=='Other'&&!((t.del||{})['c:'+k]&&!(t.cats||{})[k])).forEach(k=>{CATS[k]=DEF_CATS[k];CCOL[k]=DEF_COL[k]});
  const ck=Object.keys(t.cats||{}).filter(k=>SAFE.test(k)).sort((a,b)=>(t.cats[a].ts||0)-(t.cats[b].ts||0));
  ck.forEach((k,i)=>{CATS[k]=[t.cats[k].i||'🏷️','#eceff1'];CCOL[k]=CPAL[i%CPAL.length]});
  let j=ck.length;
@@ -233,8 +234,8 @@ function tripDays(t){if(!t.start||!t.end)return 0;const d=(new Date(t.end)-new D
 
 /* ---------- screens ---------- */
 function expRow(t,e,withSplit=true){
- const [ic,bg]=CATS[e.category]||CATS.Other,p=parts(t,e);
- return `<button class="item" onclick="openExpense('${e.id}')"><div class="ic" style="background:${bg}">${ic}</div><div class="mid"><b>${esc(e.title)}</b><small>${fdate(e.date)} · ${esc(e.payer)} paid${withSplit&&p.length!==t.members.length?` · ${p.length} sharing`:''}</small></div><div class="amt">${money(e.amount)}</div></button>`;
+ const p=parts(t,e);
+ return `<button class="item" onclick="openExpense('${e.id}')">${catBadge(e.category)}<div class="mid"><b>${esc(e.title)}</b><small>${fdate(e.date)} · ${esc(e.payer)} paid${withSplit&&p.length!==t.members.length?` · ${p.length} sharing`:''}</small></div><div class="amt">${money(e.amount)}</div></button>`;
 }
 function noMembersCard(){return `<div class="card empty"><div class="big">👥</div><b style="color:var(--ink)">Add your travel buddies first</b><div style="margin:6px 0 16px">Expenses are split between trip members.</div><button class="btn" onclick="openMember()">Add members</button></div>`}
 
@@ -257,7 +258,7 @@ function vHome(t,c){
 }
 
 function vExpenses(t){
- let h=`<div class="chips">${['All',...Object.keys(CATS)].map(k=>`<button class="chip ${filter===k?'on':''}" onclick="setFilter('${k}')">${k==='All'?'All':CATS[k][0]+' '+k}</button>`).join('')}</div>`;
+ let h=`<div class="chips">${['All',...Object.keys(CATS)].map(k=>`<button class="chip ${filter===k?'on':''}" onclick="setFilter('${k}')">${k}</button>`).join('')}</div>`;
  let list=t.expenses.filter(e=>filter==='All'||e.category===filter).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')||0);
  if(!list.length)return h+`<div class="card empty"><div class="big">🧾</div>${t.expenses.length?'No expenses in this category.':'No expenses yet. Tap <b>+</b> to add one.'}</div>`;
  const groups={};list.forEach(e=>(groups[e.date]=groups[e.date]||[]).push(e));
@@ -272,10 +273,10 @@ function vBudget(t,c){
  const keys=Object.keys(CATS).filter(k=>t.budgets[k]!==undefined);
  if(!keys.length)h+=`<div class="empty"><div class="big">🎯</div>No category budgets yet.<div style="margin-top:14px"><button class="btn sm" onclick="openBudget()">Set a budget</button></div></div>`;
  keys.forEach(k=>{const b=t.budgets[k],s=sum(t.expenses.filter(e=>e.category===k).map(e=>e.amount)),p=b?s/b*100:0;
-  h+=`<div class="brow"><div class="btop"><div class="ic" style="background:${CATS[k][1]};width:38px;height:38px;font-size:18px">${CATS[k][0]}</div><div style="flex:1"><b>${k}</b><div class="sub">${money(s)} of ${money(b)}</div></div><div style="text-align:right"><b class="${s>b?'neg':''}">${Math.round(p)}%</b><div><a href="#" style="font-size:11px;color:var(--muted)" onclick="delBudget('${k}');return false">remove</a></div></div></div><div class="pbar"><i class="${s>b?'over':''}" style="width:${Math.min(100,p)}%"></i></div></div>`});
+  h+=`<button class="brow" style="display:block;width:100%;text-align:left" onclick="openBudget('${k}')"><div class="btop">${catBadge(k,38)}<div style="flex:1"><b>${esc(k)}</b><div class="sub">${money(s)} of ${money(b)}</div></div><div style="text-align:right"><b class="${s>b?'neg':''}">${Math.round(p)}%</b><div class="sub" style="font-size:11px">Edit ›</div></div></div><div class="pbar"><i class="${s>b?'over':''}" style="width:${Math.min(100,p)}%"></i></div></button>`});
  h+=`</div>`;
  const un=Object.keys(CATS).filter(k=>t.budgets[k]===undefined&&t.expenses.some(e=>e.category===k));
- if(un.length)h+=`<div class="note">Spending with no budget: ${un.map(k=>`${CATS[k][0]} ${k} (${short(sum(t.expenses.filter(e=>e.category===k).map(e=>e.amount)))})`).join(', ')}</div>`;
+ if(un.length)h+=`<div class="note">Spending with no budget: ${un.map(k=>`${k} (${short(sum(t.expenses.filter(e=>e.category===k).map(e=>e.amount)))})`).join(', ')}</div>`;
  return h;
 }
 
@@ -344,8 +345,8 @@ window.addEventListener('popstate',e=>{
 });
 $('overlay').addEventListener('click',e=>{if(e.target.id==='overlay')closeSheet()});
 let selCat='Food',selSplit=[];
-function catChips(){return Object.keys(CATS).map((k,i)=>`<button type="button" class="chip ${selCat===k?'on':''}" onclick="pickCat(${i})">${CATS[k][0]} ${esc(k)}</button>`).join('')+`<button type="button" class="chip" style="color:var(--brand)" onclick="showNewCat()">＋ New</button>`}
-function pickCat(i){selCat=Object.keys(CATS)[i];$('catSel').innerHTML=catChips()}
+function catChips(){return Object.keys(CATS).map((k,i)=>`<button type="button" class="chip ${selCat===k?'on':''}" onclick="pickCat(${i})">${esc(k)}</button>`).join('')+`<button type="button" class="chip" style="color:var(--brand)" onclick="showNewCat()">＋ New</button>`}
+function pickCat(i){selCat=Object.keys(CATS)[i];$('catSel').innerHTML=catChips();if($('bAmt'))refreshBudget()}
 function splitChips(t){return t.members.map((m,i)=>`<button type="button" class="chip ${selSplit.includes(m)?'on':''}" onclick="toggleSplit(${i})">${esc(m)}</button>`).join('')}
 function toggleSplit(i){const m=T().members[i];selSplit=selSplit.includes(m)?selSplit.filter(x=>x!==m):[...selSplit,m];$('splitSel').innerHTML=splitChips(T())}
 function allSplit(){selSplit=[...T().members];$('splitSel').innerHTML=splitChips(T())}
@@ -354,7 +355,7 @@ function openExpense(id){
  const t=T();
  if(!t.members.length){toast('Add members first');go('more');return openMember()}
  const e=id?t.expenses.find(x=>x.id===id):null;
- selCat=e?e.category:'Food';selSplit=e?parts(t,e).slice():[...t.members];
+ selCat=e?e.category:(CATS.Food?'Food':Object.keys(CATS)[0]);selSplit=e?parts(t,e).slice():[...t.members];
  const payers=[...t.members,...(t.deposits.length?[FUND]:[])];
  sheet(`<h3>${e?'Edit expense':'New expense'}</h3>
  <div class="amountbox"><small>AMOUNT (₹)</small><input id="xAmt" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0" value="${e?e.amount:''}"></div>
@@ -387,13 +388,19 @@ function openDeposit(){
 function saveDeposit(){const a=Number($('dAmt').value);if(!(a>0))return toast('Enter an amount');T().deposits.push({id:uid(),member:$('dMem').value,amount:a,date:$('dDate').value||today(),note:$('dNote').value.trim(),ts:Date.now()});closeSheet();save();vib();toast('Deposit added')}
 function delDeposit(id){if(!confirm('Delete this deposit?'))return;const t=T();t.del['d:'+id]=Date.now();t.deposits=t.deposits.filter(d=>d.id!==id);save();toast('Deleted')}
 
-function openBudget(){
- const t=T();let k=Object.keys(CATS).find(c=>t.budgets[c]===undefined)||'Food';selCat=k;
- sheet(`<h3>Set category budget</h3><div class="fld"><label>CATEGORY</label><div class="sel" id="catSel">${catChips()}</div></div>
- <div class="fld"><label>BUDGET (₹)</label><input id="bAmt" type="number" inputmode="decimal" min="0" step="0.01" placeholder="e.g. 5000" value="${t.budgets[k]||''}"></div><button class="btn" onclick="saveBudget()">Save budget</button>`);
+function openBudget(k){
+ const t=T(),keys=Object.keys(CATS);
+ selCat=(k&&CATS[k])?k:(keys.find(c=>t.budgets[c]===undefined)||keys[0]);
+ const b=t.budgets[selCat];
+ sheet(`<h3>Category budget</h3><div class="fld"><label>CATEGORY</label><div class="sel" id="catSel">${catChips()}</div></div>
+ <div class="fld"><label>BUDGET (₹)</label><input id="bAmt" type="number" inputmode="decimal" min="0" step="0.01" placeholder="e.g. 5000" value="${b!==undefined?b:''}"></div>
+ <button class="btn" onclick="saveBudget()">Save budget</button>
+ <div id="bDelWrap" style="margin-top:10px;display:${b!==undefined?'block':'none'}"><button class="btn dng" onclick="delBudgetSheet()">Delete budget</button></div>`);
 }
+function refreshBudget(){const b=T().budgets[selCat];if($('bAmt'))$('bAmt').value=b!==undefined?b:'';if($('bDelWrap'))$('bDelWrap').style.display=b!==undefined?'block':'none'}
 function saveBudget(){const a=Number($('bAmt').value);if(!(a>0))return toast('Enter an amount');T().budgets[selCat]=a;T().bts[selCat]=Date.now();closeSheet();save();toast('Budget saved')}
 function delBudget(k){delete T().budgets[k];T().bts[k]=Date.now();save()}
+function delBudgetSheet(){const k=selCat;if(!confirm('Delete the budget for '+k+'?'))return;closeSheet();delBudget(k);toast('Budget deleted')}
 
 function openMember(){
  sheet(`<h3>Add member</h3><div class="fld"><label>NAME</label><input id="mName" placeholder="Enter name" autocomplete="off"></div><button class="btn" onclick="saveMember(false)">Add member</button><div style="margin-top:10px"><button class="btn sec" onclick="saveMember(true)">Add &amp; add another</button></div>`);
@@ -427,38 +434,40 @@ function delTrip(){
  S.trips=S.trips.filter(t=>t.id!==S.current);if(!S.trips.length)S.trips.push(newTrip());S.current=S.trips[0].id;save();go('home');toast('Trip deleted');
 }
 
-/* ---------- custom categories ---------- */
+/* ---------- categories ---------- */
 function showNewCat(){
  if($('newCat')){$('cName').focus();return}
  const d=document.createElement('div');d.id='newCat';d.style.cssText='margin-top:10px;display:flex;gap:8px;align-items:center';
- d.innerHTML=`<input id="cIcon" value="🏷️" maxlength="4" style="width:60px;text-align:center;font-size:20px;padding:10px 4px;border-radius:12px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink)"><input id="cName" placeholder="Category name" maxlength="20" autocomplete="off" style="flex:1;min-width:0;font-size:16px;padding:11px 12px;border-radius:12px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink)"><button type="button" class="btn sm" onclick="addCat(false)">Add</button>`;
+ d.innerHTML=`<input id="cName" placeholder="Category name" maxlength="20" autocomplete="off" style="flex:1;min-width:0;font-size:16px;padding:11px 12px;border-radius:12px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink)"><button type="button" class="btn sm" onclick="addCat(false)">Add</button>`;
  $('catSel').after(d);$('cName').focus();
  $('cName').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();addCat(false)}};
 }
 function openCatSheet(){
- sheet(`<h3>New category</h3><div class="fld"><label>ICON (EMOJI)</label><input id="cIcon" value="🏷️" maxlength="4" style="text-align:center;font-size:26px"></div><div class="fld"><label>NAME</label><input id="cName" placeholder="e.g. Gifts, Tickets, Tips" maxlength="20" autocomplete="off"></div><button class="btn" onclick="addCat(true)">Add category</button>`);
+ sheet(`<h3>New category</h3><div class="fld"><label>NAME</label><input id="cName" placeholder="e.g. Gifts, Tickets, Tips" maxlength="20" autocomplete="off"></div><button class="btn" onclick="addCat(true)">Add category</button>`);
  setTimeout(()=>{const i=$('cName');if(!i)return;i.focus();i.onkeydown=e=>{if(e.key==='Enter')addCat(true)}},320);
 }
 function addCat(standalone){
  const t=T(),n=$('cName').value.replace(/['"`\\<>&]/g,'').replace(/\s+/g,' ').trim().slice(0,20);
  if(!n)return toast('Enter a category name');
  if(Object.keys(CATS).some(k=>k.toLowerCase()===n.toLowerCase()))return toast('That category already exists');
- const ic=Array.from(($('cIcon').value||'').replace(/['"`\\<>&]/g,'').trim()).slice(0,2).join('')||'🏷️';
- t.cats[n]={i:ic,ts:Date.now()};
+ t.cats[n]={i:'',ts:Date.now()};
  applyCats(t);selCat=n;
- if(standalone){closeSheet()}else{$('catSel').innerHTML=catChips();const d=$('newCat');if(d)d.remove()}
+ if(standalone){closeSheet()}else{$('catSel').innerHTML=catChips();const d=$('newCat');if(d)d.remove();if($('bAmt'))refreshBudget()}
  save();vib();toast('Category added');
 }
 function catsCard(t){
- const ks=Object.keys(t.cats||{});
- return `<h2 class="sec">Categories</h2><div class="card" style="padding:4px 16px">`+(ks.length?ks.map((k,i)=>{const u=t.expenses.filter(e=>e.category===k).length;return `<div class="item"><div class="ic" style="background:#eceff1;width:38px;height:38px;font-size:18px">${esc(t.cats[k].i)}</div><div class="mid"><b>${esc(k)}</b><small>${u} expense${u===1?'':'s'}</small></div><button class="btn sec sm" onclick="delCat(${i})">Remove</button></div>`}).join(''):`<div class="empty" style="padding:18px">No custom categories yet.</div>`)+`</div><div style="margin-top:12px"><button class="btn sec" onclick="openCatSheet()">＋ New category</button></div>`;
+ const ks=Object.keys(CATS);
+ return `<h2 class="sec">Categories</h2><div class="card" style="padding:4px 16px">`+ks.map((k,i)=>{const u=t.expenses.filter(e=>e.category===k).length;return `<div class="item">${catBadge(k,38)}<div class="mid"><b>${esc(k)}</b><small>${u} expense${u===1?'':'s'}${k==='Other'?' · default, can\'t be removed':''}</small></div>${k==='Other'?'':`<button class="btn sec sm" onclick="delCat(${i})">Remove</button>`}</div>`}).join('')+`</div><div style="margin-top:12px"><button class="btn sec" onclick="openCatSheet()">＋ New category</button></div>`;
 }
 function delCat(i){
- const t=T(),k=Object.keys(t.cats)[i];if(!k)return;
- if(t.expenses.some(e=>e.category===k))return toast('Change or delete its expenses first');
- if(!confirm('Remove category "'+k+'"?'))return;
- t.del['c:'+k]=Date.now();delete t.cats[k];
- if(k in t.budgets){delete t.budgets[k];t.bts[k]=Date.now()}
+ const t=T(),k=Object.keys(CATS)[i];if(!k||k==='Other')return;
+ const u=t.expenses.filter(e=>e.category===k).length;
+ if(!confirm('Remove category "'+k+'"?'+(u?'\n'+u+' expense'+(u===1?'':'s')+' will move to "Other".':'')))return;
+ const now=Date.now();
+ t.expenses.forEach(e=>{if(e.category===k){e.category='Other';e.ts=now}});
+ delete t.cats[k];t.del['c:'+k]=now;
+ if(k in t.budgets){delete t.budgets[k];t.bts[k]=now}
+ if(filter===k)filter='All';
  save();toast('Category removed');
 }
 
