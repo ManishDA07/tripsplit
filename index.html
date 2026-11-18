@@ -166,12 +166,13 @@ h2.sec a{font-size:13px;color:var(--brand);font-weight:700;text-decoration:none}
 <script>
 /* ---------- state ---------- */
 const KEY='tripsplit_v2',OLD='tripsplit_v1',FUND='Trip fund';
-const CATS={'Travel':['✈️','#e3eefe'],'Stay':['🏨','#f1e6fb'],'Food':['🍽️','#fff0dc'],'Local transport':['🚕','#fdf3c8'],'Activities':['🎟️','#fde6ee'],'Shopping':['🛍️','#e0f5f0'],'Other':['📦','#eceff1']};
-const CCOL={'Travel':'#4f86e8','Stay':'#9a63d8','Food':'#f2994a','Local transport':'#e6c229','Activities':'#e86c92','Shopping':'#2bb5a0','Other':'#94a3ad'};
+const DEF_CATS={'Travel':['✈️','#e3eefe'],'Stay':['🏨','#f1e6fb'],'Food':['🍽️','#fff0dc'],'Local transport':['🚕','#fdf3c8'],'Activities':['🎟️','#fde6ee'],'Shopping':['🛍️','#e0f5f0'],'Other':['📦','#eceff1']};
+const DEF_COL={'Travel':'#4f86e8','Stay':'#9a63d8','Food':'#f2994a','Local transport':'#e6c229','Activities':'#e86c92','Shopping':'#2bb5a0','Other':'#94a3ad'};
+const CATS={},CCOL={};
 const AV=['#0f7a5c','#4f86e8','#9a63d8','#e86c92','#f2994a','#2bb5a0','#c0554f','#6b7fd7'];
 const uid=()=>(crypto.randomUUID?crypto.randomUUID():'id'+Date.now().toString(36)+Math.random().toString(36).slice(2,8));
-const newTrip=(name='My trip')=>({id:uid(),code:'',name,start:'',end:'',metaTs:0,members:[],mts:{},budgets:{},bts:{},expenses:[],deposits:[],del:{}});
-function norm(t){t.del=t.del||{};t.mts=t.mts||{};t.bts=t.bts||{};t.code=t.code||'';t.metaTs=t.metaTs||0;t.members=t.members||[];t.budgets=t.budgets||{};t.expenses=t.expenses||[];t.deposits=t.deposits||[];return t}
+const newTrip=(name='My trip')=>({id:uid(),code:'',name,start:'',end:'',metaTs:0,members:[],mts:{},budgets:{},bts:{},expenses:[],deposits:[],del:{},cats:{}});
+function norm(t){t.cats=t.cats||{};t.del=t.del||{};t.mts=t.mts||{};t.bts=t.bts||{};t.code=t.code||'';t.metaTs=t.metaTs||0;t.members=t.members||[];t.budgets=t.budgets||{};t.expenses=t.expenses||[];t.deposits=t.deposits||[];return t}
 function load(){
  try{const s=localStorage.getItem(KEY);if(s){const d=JSON.parse(s);if(d&&d.trips&&d.trips.length)return d}}catch(e){}
  try{const o=localStorage.getItem(OLD);if(o){const d=JSON.parse(o);const t=newTrip(d.trip&&d.trip.place||'My trip');t.start=d.trip?.start||'';t.end=d.trip?.end||'';t.members=d.members||[];t.budgets=d.budgets||{};t.expenses=d.expenses||[];t.deposits=d.deposits||[];return{current:t.id,trips:[t]}}}catch(e){}
@@ -179,6 +180,17 @@ function load(){
 }
 let S=load(),tab='home',filter='All';S.trips.forEach(norm);
 const T=()=>S.trips.find(t=>t.id===S.current)||S.trips[0];
+const CPAL=['#d96c6c','#6c8fd9','#4fb89a','#c79a3d','#9c6cd9','#d96cb5','#5fb0c9','#8aa84f'];
+const SAFE=/^[^'"`\\<>&]+$/;
+function applyCats(t){
+ [CATS,CCOL].forEach(o=>Object.keys(o).forEach(k=>delete o[k]));
+ Object.keys(DEF_CATS).filter(k=>k!=='Other').forEach(k=>{CATS[k]=DEF_CATS[k];CCOL[k]=DEF_COL[k]});
+ const ck=Object.keys(t.cats||{}).filter(k=>SAFE.test(k)).sort((a,b)=>(t.cats[a].ts||0)-(t.cats[b].ts||0));
+ ck.forEach((k,i)=>{CATS[k]=[t.cats[k].i||'🏷️','#eceff1'];CCOL[k]=CPAL[i%CPAL.length]});
+ let j=ck.length;
+ (t.expenses||[]).forEach(e=>{if(e.category&&!CATS[e.category]&&e.category!=='Other'&&SAFE.test(e.category)){CATS[e.category]=['🏷️','#eceff1'];CCOL[e.category]=CPAL[j++%CPAL.length]}});
+ CATS.Other=DEF_CATS.Other;CCOL.Other=DEF_COL.Other;
+}
 let rev=0,syncT=null;const syncState={},syncing={};
 function persist(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){toast('⚠️ Could not save — storage full or blocked')}}
 function save(){persist();rev++;render();scheduleSync()}
@@ -285,7 +297,7 @@ function vMore(t){
  let h=cloudCard(t)+`<h2 class="sec">Members</h2><div class="card" style="padding:4px 16px">`+
  (t.members.map((m,i)=>`<div class="item"><div class="mav" style="background:${avc(t,m)}">${ini(m)}</div><div class="mid"><b>${esc(m)}</b></div><button class="btn sec sm" onclick="removeMember(${i})">Remove</button></div>`).join('')||`<div class="empty">No members yet</div>`)+
  `</div><div style="margin-top:12px"><button class="btn" onclick="openMember()">＋ Add member</button></div>
- <h2 class="sec">Trip</h2><div class="card" style="padding:4px 16px">
+ ${catsCard(t)}<h2 class="sec">Trip</h2><div class="card" style="padding:4px 16px">
   <button class="rowbtn" onclick="openTripEdit()"><span>✏️</span><div style="flex:1">Edit trip details<small>${esc(t.name)}${t.start?' · '+fdate(t.start):''}${t.end?' – '+fdate(t.end):''}</small></div><span style="background:none;color:var(--muted)">›</span></button>
   <button class="rowbtn" onclick="openTrips()"><span>🧳</span><div style="flex:1">Switch or create trip<small>${S.trips.length} trip${S.trips.length>1?'s':''} on this device</small></div><span style="background:none;color:var(--muted)">›</span></button>
  </div>
@@ -299,7 +311,7 @@ function vMore(t){
 }
 
 function render(){
- const t=T(),c=calc(t);
+ const t=T();applyCats(t);const c=calc(t);
  $('tName').textContent=t.name||'My trip';
  updateSub();
  const v=$('view');
@@ -307,17 +319,33 @@ function render(){
  document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===tab));
  $('fab').style.display=tab==='more'?'none':'grid';
 }
-function go(t){tab=t;window.scrollTo({top:0});$('view').style.animation='none';void $('view').offsetWidth;$('view').style.animation='';render()}
+function show(t){tab=t;window.scrollTo({top:0});$('view').style.animation='none';void $('view').offsetWidth;$('view').style.animation='';render()}
+function go(t){if(t!==tab){try{history.pushState({tab:t},'')}catch(e){}}show(t)}
 function setFilter(k){filter=k;render()}
 document.querySelectorAll('#nav button').forEach(b=>b.onclick=()=>{vib();go(b.dataset.t)});
 
 /* ---------- sheets ---------- */
-function sheet(html){$('sheet').innerHTML='<div class="grab"></div>'+html;$('overlay').classList.add('open');document.body.style.overflow='hidden'}
-function closeSheet(){$('overlay').classList.remove('open');document.body.style.overflow=''}
+let sheetHist=false,pendingNext=null;
+function sheet(html){$('sheet').innerHTML='<div class="grab"></div>'+html;$('sheet').scrollTop=0;
+ if(!sheetHist){try{history.pushState({tab,sheet:1},'');sheetHist=true}catch(e){}}
+ $('overlay').classList.add('open');document.body.style.overflow='hidden'}
+function hideSheet(){$('overlay').classList.remove('open');document.body.style.overflow=''}
+function closeSheet(next){
+ if(typeof next!=='function')next=null;
+ if(!$('overlay').classList.contains('open')){if(next)next();return}
+ if(sheetHist){pendingNext=next;history.back();
+  setTimeout(()=>{if(sheetHist&&$('overlay').classList.contains('open')){hideSheet();sheetHist=false;const n=pendingNext;pendingNext=null;if(n)n()}},600)}
+ else{hideSheet();if(next)next()}
+}
+window.addEventListener('popstate',e=>{
+ if($('overlay').classList.contains('open')){hideSheet();sheetHist=false;const n=pendingNext;pendingNext=null;if(n)n();return}
+ sheetHist=false;
+ const s=e.state;if(s&&s.tab&&s.tab!==tab)show(s.tab);
+});
 $('overlay').addEventListener('click',e=>{if(e.target.id==='overlay')closeSheet()});
 let selCat='Food',selSplit=[];
-function catChips(){return Object.keys(CATS).map(k=>`<button type="button" class="chip ${selCat===k?'on':''}" onclick="pickCat('${k}')">${CATS[k][0]} ${k}</button>`).join('')}
-function pickCat(k){selCat=k;$('catSel').innerHTML=catChips()}
+function catChips(){return Object.keys(CATS).map((k,i)=>`<button type="button" class="chip ${selCat===k?'on':''}" onclick="pickCat(${i})">${CATS[k][0]} ${esc(k)}</button>`).join('')+`<button type="button" class="chip" style="color:var(--brand)" onclick="showNewCat()">＋ New</button>`}
+function pickCat(i){selCat=Object.keys(CATS)[i];$('catSel').innerHTML=catChips()}
 function splitChips(t){return t.members.map((m,i)=>`<button type="button" class="chip ${selSplit.includes(m)?'on':''}" onclick="toggleSplit(${i})">${esc(m)}</button>`).join('')}
 function toggleSplit(i){const m=T().members[i];selSplit=selSplit.includes(m)?selSplit.filter(x=>x!==m):[...selSplit,m];$('splitSel').innerHTML=splitChips(T())}
 function allSplit(){selSplit=[...T().members];$('splitSel').innerHTML=splitChips(T())}
@@ -336,7 +364,7 @@ function openExpense(id){
  <div class="fld"><label>SPLIT BETWEEN <a href="#" onclick="allSplit();return false" style="color:var(--brand);float:right">Select all</a></label><div class="sel" id="splitSel">${splitChips(t)}</div></div>
  <button class="btn" onclick="saveExpense('${id||''}')">${e?'Save changes':'Add expense'}</button>
  ${e?`<div style="margin-top:10px"><button class="btn dng" onclick="delExpense('${id}')">Delete expense</button></div>`:''}`);
- if(!e)setTimeout(()=>$('xAmt').focus(),320);
+ if(!e)setTimeout(()=>{const i=$('xAmt');if(i)i.focus()},320);
 }
 function saveExpense(id){
  const t=T(),amt=Number($('xAmt').value),title=$('xTitle').value.trim();
@@ -354,7 +382,7 @@ function openDeposit(){
  <div class="fld"><label>MEMBER</label><select id="dMem">${t.members.map(m=>`<option>${esc(m)}</option>`).join('')}</select></div>
  <div class="two"><div class="fld"><label>DATE</label><input id="dDate" type="date" value="${today()}"></div><div class="fld"><label>NOTE (OPTIONAL)</label><input id="dNote" placeholder="Advance for hotel"></div></div>
  <button class="btn" onclick="saveDeposit()">Add deposit</button><div class="note">Deposits go into a shared <b>Trip fund</b>. Choose “Trip fund” as the payer when an expense is paid from that cash.</div>`);
- setTimeout(()=>$('dAmt').focus(),320);
+ setTimeout(()=>{const i=$('dAmt');if(i)i.focus()},320);
 }
 function saveDeposit(){const a=Number($('dAmt').value);if(!(a>0))return toast('Enter an amount');T().deposits.push({id:uid(),member:$('dMem').value,amount:a,date:$('dDate').value||today(),note:$('dNote').value.trim(),ts:Date.now()});closeSheet();save();vib();toast('Deposit added')}
 function delDeposit(id){if(!confirm('Delete this deposit?'))return;const t=T();t.del['d:'+id]=Date.now();t.deposits=t.deposits.filter(d=>d.id!==id);save();toast('Deleted')}
@@ -369,7 +397,7 @@ function delBudget(k){delete T().budgets[k];T().bts[k]=Date.now();save()}
 
 function openMember(){
  sheet(`<h3>Add member</h3><div class="fld"><label>NAME</label><input id="mName" placeholder="Enter name" autocomplete="off"></div><button class="btn" onclick="saveMember(false)">Add member</button><div style="margin-top:10px"><button class="btn sec" onclick="saveMember(true)">Add &amp; add another</button></div>`);
- setTimeout(()=>{const i=$('mName');i.focus();i.onkeydown=e=>{if(e.key==='Enter')saveMember(true)}},320);
+ setTimeout(()=>{const i=$('mName');if(!i)return;i.focus();i.onkeydown=e=>{if(e.key==='Enter')saveMember(true)}},320);
 }
 function saveMember(more){
  const t=T(),n=$('mName').value.trim();if(!n)return toast('Enter a name');
@@ -392,11 +420,46 @@ function saveTripEdit(){const t=T(),n=$('tN').value.trim();if(!n)return toast('E
 function openTrips(){
  sheet(`<h3>Your trips</h3>`+S.trips.map(t=>`<button class="item" onclick="switchTrip('${t.id}')"><div class="avatar" style="width:44px;height:44px">🧳</div><div class="mid"><b>${esc(t.name)}</b><small>${t.members.length} members · ${money(sum(t.expenses.map(e=>e.amount)))}</small></div>${t.id===S.current?'<span class="pos" style="font-weight:800">✓</span>':''}</button>`).join('')+`<div style="margin-top:16px"><button class="btn" onclick="createTrip()">＋ New trip</button></div><div style="margin-top:10px"><button class="btn sec" onclick="openJoin()">Join a trip with a code</button></div>`);
 }
-function switchTrip(id){S.current=id;filter='All';closeSheet();save();go('home');syncNow(T())}
-function createTrip(){const t=newTrip('New trip');S.trips.push(t);S.current=t.id;save();closeSheet();go('more');setTimeout(openTripEdit,300)}
+function switchTrip(id){S.current=id;filter='All';closeSheet(()=>go('home'));save();syncNow(T())}
+function createTrip(){const t=newTrip('New trip');S.trips.push(t);S.current=t.id;save();closeSheet(()=>{go('more');setTimeout(openTripEdit,300)})}
 function delTrip(){
  if(!confirm('Delete "'+T().name+'" and all its data?'))return;
  S.trips=S.trips.filter(t=>t.id!==S.current);if(!S.trips.length)S.trips.push(newTrip());S.current=S.trips[0].id;save();go('home');toast('Trip deleted');
+}
+
+/* ---------- custom categories ---------- */
+function showNewCat(){
+ if($('newCat')){$('cName').focus();return}
+ const d=document.createElement('div');d.id='newCat';d.style.cssText='margin-top:10px;display:flex;gap:8px;align-items:center';
+ d.innerHTML=`<input id="cIcon" value="🏷️" maxlength="4" style="width:60px;text-align:center;font-size:20px;padding:10px 4px;border-radius:12px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink)"><input id="cName" placeholder="Category name" maxlength="20" autocomplete="off" style="flex:1;min-width:0;font-size:16px;padding:11px 12px;border-radius:12px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink)"><button type="button" class="btn sm" onclick="addCat(false)">Add</button>`;
+ $('catSel').after(d);$('cName').focus();
+ $('cName').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();addCat(false)}};
+}
+function openCatSheet(){
+ sheet(`<h3>New category</h3><div class="fld"><label>ICON (EMOJI)</label><input id="cIcon" value="🏷️" maxlength="4" style="text-align:center;font-size:26px"></div><div class="fld"><label>NAME</label><input id="cName" placeholder="e.g. Gifts, Tickets, Tips" maxlength="20" autocomplete="off"></div><button class="btn" onclick="addCat(true)">Add category</button>`);
+ setTimeout(()=>{const i=$('cName');if(!i)return;i.focus();i.onkeydown=e=>{if(e.key==='Enter')addCat(true)}},320);
+}
+function addCat(standalone){
+ const t=T(),n=$('cName').value.replace(/['"`\\<>&]/g,'').replace(/\s+/g,' ').trim().slice(0,20);
+ if(!n)return toast('Enter a category name');
+ if(Object.keys(CATS).some(k=>k.toLowerCase()===n.toLowerCase()))return toast('That category already exists');
+ const ic=Array.from(($('cIcon').value||'').replace(/['"`\\<>&]/g,'').trim()).slice(0,2).join('')||'🏷️';
+ t.cats[n]={i:ic,ts:Date.now()};
+ applyCats(t);selCat=n;
+ if(standalone){closeSheet()}else{$('catSel').innerHTML=catChips();const d=$('newCat');if(d)d.remove()}
+ save();vib();toast('Category added');
+}
+function catsCard(t){
+ const ks=Object.keys(t.cats||{});
+ return `<h2 class="sec">Categories</h2><div class="card" style="padding:4px 16px">`+(ks.length?ks.map((k,i)=>{const u=t.expenses.filter(e=>e.category===k).length;return `<div class="item"><div class="ic" style="background:#eceff1;width:38px;height:38px;font-size:18px">${esc(t.cats[k].i)}</div><div class="mid"><b>${esc(k)}</b><small>${u} expense${u===1?'':'s'}</small></div><button class="btn sec sm" onclick="delCat(${i})">Remove</button></div>`}).join(''):`<div class="empty" style="padding:18px">No custom categories yet.</div>`)+`</div><div style="margin-top:12px"><button class="btn sec" onclick="openCatSheet()">＋ New category</button></div>`;
+}
+function delCat(i){
+ const t=T(),k=Object.keys(t.cats)[i];if(!k)return;
+ if(t.expenses.some(e=>e.category===k))return toast('Change or delete its expenses first');
+ if(!confirm('Remove category "'+k+'"?'))return;
+ t.del['c:'+k]=Date.now();delete t.cats[k];
+ if(k in t.budgets){delete t.budgets[k];t.bts[k]=Date.now()}
+ save();toast('Category removed');
 }
 
 /* ---------- backup ---------- */
@@ -428,6 +491,8 @@ function mergeTrips(a,b){
  r.mts={...(a.mts||{})};for(const k in (b.mts||{}))r.mts[k]=Math.max(r.mts[k]||0,b.mts[k]);
  const names=[...(a.members||[])];for(const n of (b.members||[]))if(!names.includes(n))names.push(n);
  r.members=names.filter(n=>alive('m:'+n,r.mts[n]||1));
+ r.cats={};for(const x of [a.cats||{},b.cats||{}])for(const k in x){const c=r.cats[k];if(!c||(x[k].ts||0)>(c.ts||0))r.cats[k]=x[k]}
+ for(const k in r.cats)if(!alive('c:'+k,r.cats[k].ts))delete r.cats[k];
  r.budgets={};r.bts={};
  const keys=new Set([...Object.keys(a.budgets||{}),...Object.keys(b.budgets||{}),...Object.keys(a.bts||{}),...Object.keys(b.bts||{})]);
  for(const k of keys){const ta=(a.bts||{})[k]||0,tb=(b.bts||{})[k]||0;const src=tb>ta?b:ta>tb?a:(k in (a.budgets||{}))?a:b;
@@ -456,18 +521,18 @@ async function shareTrip(){const t=T(),text=`Join "${t.name}" on TripSplit — c
  try{if(navigator.share){await navigator.share({title:'TripSplit',text,url:inviteLink(t)});return}}catch(e){return}
  try{await navigator.clipboard.writeText(text+'\n'+inviteLink(t));toast('Invite link copied')}catch(e){toast('Code: '+t.code)}}
 async function copyCode(){try{await navigator.clipboard.writeText(T().code);toast('Code copied')}catch(e){toast('Code: '+T().code)}}
-function openJoin(){sheet(`<h3>Join a trip</h3><div class="fld"><label>TRIP CODE</label><input id="jCode" placeholder="8-character code" maxlength="8" autocapitalize="characters" autocomplete="off" style="text-align:center;font-size:24px;font-weight:800;letter-spacing:4px;text-transform:uppercase"></div><button class="btn" onclick="joinTrip($('jCode').value)">Join trip</button><div class="note">Ask the trip creator for the code, or open the invite link they share.</div>`);setTimeout(()=>$('jCode').focus(),320)}
+function openJoin(){sheet(`<h3>Join a trip</h3><div class="fld"><label>TRIP CODE</label><input id="jCode" placeholder="8-character code" maxlength="8" autocapitalize="characters" autocomplete="off" style="text-align:center;font-size:24px;font-weight:800;letter-spacing:4px;text-transform:uppercase"></div><button class="btn" onclick="joinTrip($('jCode').value)">Join trip</button><div class="note">Ask the trip creator for the code, or open the invite link they share.</div>`);setTimeout(()=>{const i=$('jCode');if(i)i.focus()},320)}
 async function joinTrip(code){
  code=String(code||'').trim().toUpperCase();
  if(!/^[A-Z2-9]{8}$/.test(code))return toast('Enter the 8-character code');
- const ex=S.trips.find(t=>t.code===code);if(ex){S.current=ex.id;closeSheet();save();go('home');syncNow(ex);return toast('You already have this trip')}
+ const ex=S.trips.find(t=>t.code===code);if(ex){S.current=ex.id;closeSheet(()=>go('home'));save();syncNow(ex);return toast('You already have this trip')}
  try{
   const res=await fetch('/api/trip?code='+code);
   if(res.status===404)return toast('Code not found');
   if(res.status===503)return toast('Cloud storage not set up yet');
   if(!res.ok)throw 0;
   const {trip}=await res.json();const t=norm(trip);t.id=uid();t.code=code;
-  S.trips.push(t);S.current=t.id;closeSheet();save();go('home');toast('Joined '+t.name);
+  S.trips.push(t);S.current=t.id;closeSheet(()=>go('home'));save();toast('Joined '+t.name);
  }catch(e){toast('Could not join — check your connection')}
 }
 function cloudCard(t){
@@ -480,8 +545,9 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncNow(T(
 window.addEventListener('online',()=>syncNow(T()));
 
 /* ---------- init ---------- */
+try{history.replaceState({tab:'home'},'')}catch(e){}
 render();syncNow(T());
-(function(){const p=new URLSearchParams(location.search).get('join');if(p){history.replaceState(null,'',location.pathname);setTimeout(()=>joinTrip(p),400)}})();
+(function(){const p=new URLSearchParams(location.search).get('join');if(p){history.replaceState({tab:'home'},'',location.pathname);setTimeout(()=>joinTrip(p),400)}})();
 if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});
 try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
 </script>
