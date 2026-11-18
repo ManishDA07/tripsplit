@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>TripSplit — Trip Expense Manager</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap');
+:root{
+ --bg:#f4f6f5;--card:#fff;--ink:#17221e;--muted:#78847e;--line:#e8eeea;
+ --brand:#176b52;--brand-dark:#10523f;--soft:#eaf4ef;--green:#16845b;--red:#c34f4f;
+ --shadow:0 12px 34px rgba(25,48,38,.055);--shadow-sm:0 3px 12px rgba(25,48,38,.045);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 'DM Sans',ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit}
+button{cursor:pointer;border:0;border-radius:11px;padding:11px 16px;background:var(--brand);color:#fff;font-weight:700;letter-spacing:.05px;transition:background .18s,transform .18s,box-shadow .18s}
+button:hover{background:var(--brand-dark);box-shadow:0 5px 14px rgba(23,107,82,.16)}
+button:active{transform:translateY(1px)}
+button.secondary{background:#fff;color:#34443c;border:1px solid var(--line);box-shadow:var(--shadow-sm)}
+button.secondary:hover{background:#f7faf8}
+button.danger{background:#fff2f1;color:var(--red);box-shadow:none}
+.app{max-width:1240px;margin:auto;padding:30px 28px 64px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:28px;padding-bottom:20px;border-bottom:1px solid #e6ece8}
+.brand{font:800 24px/1 'Manrope',sans-serif;letter-spacing:-1.1px;color:#172a22}
+.brand span{color:var(--brand)}
+.sub{color:var(--muted);font-size:12px;margin-top:6px}
+.layout{display:grid;grid-template-columns:218px minmax(0,1fr);gap:27px}
+.side{padding:10px;background:transparent;border:0;box-shadow:none;height:max-content}
+.nav{display:flex;flex-direction:column;gap:5px;position:sticky;top:24px}
+.nav button{display:flex;align-items:center;gap:11px;background:transparent;color:#65736c;text-align:left;font-weight:600;padding:12px 14px;border-radius:11px;box-shadow:none}
+.nav button:hover{background:#eaf0ec;color:#26483a}
+.nav button.active{background:#e3f0e9;color:var(--brand-dark);font-weight:700}
+.main{min-width:0}
+.pagehead{display:flex;justify-content:space-between;align-items:center;margin:0 0 20px;gap:12px}
+.pagehead h1{font:800 27px/1.2 'Manrope',sans-serif;letter-spacing:-1px;margin:0;color:#192a22}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:16px}
+.stat{padding:19px 20px;background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow-sm);position:relative;overflow:hidden}
+.stat .label{color:var(--muted);font-size:12px;font-weight:600;letter-spacing:.15px}
+.stat .value{font:800 26px/1.25 'Manrope',sans-serif;margin-top:8px;letter-spacing:-.8px;color:#1d3027}
+.panel{padding:21px;background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow-sm);margin-bottom:16px}
+.panel h2{font:750 15px/1.3 'Manrope',sans-serif;letter-spacing:-.2px;margin:0 0 17px;color:#26382f}
+.row{display:flex;gap:12px;align-items:end;flex-wrap:wrap}
+.field{display:flex;flex-direction:column;gap:7px;flex:1;min-width:130px}
+.field label{font-size:11px;color:#75827b;font-weight:700;letter-spacing:.35px;text-transform:uppercase}
+.field input,.field select{width:100%;padding:11px 12px;border:1px solid #dfe7e2;border-radius:10px;background:#fcfdfc;color:var(--ink);outline:none;transition:border .15s,box-shadow .15s}
+.field input:focus,.field select:focus{border-color:#70a88f;box-shadow:0 0 0 3px #176b5216;background:#fff}
+.tablewrap{overflow:auto}
+table{width:100%;border-collapse:collapse;min-width:520px}
+th,td{text-align:left;padding:13px 10px;border-bottom:1px solid #edf1ee;font-size:12px}
+th{color:#829088;font-weight:700;font-size:10px;letter-spacing:.5px;text-transform:uppercase}
+td strong{font-size:13px;color:#26382f}
+tr:last-child td{border-bottom:0}
+.right{text-align:right}.muted{color:var(--muted)}
+.pill{display:inline-block;border-radius:99px;padding:6px 10px;background:#eaf3ed;color:#28654d;font-size:11px;font-weight:700}
+.positive{color:var(--green)}.negative{color:var(--red)}
+.empty{padding:26px 16px;text-align:center;color:#8a9690;font-size:13px;background:#fafcfb;border:1px dashed #e2eae5;border-radius:11px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:15px}
+.hidden{display:none!important}
+.memberchips{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}
+.chip{background:#f0f5f1;border:1px solid #e6eee8;border-radius:99px;padding:7px 11px;font-size:12px;color:#3d5949;font-weight:600}
+.bar{height:7px;background:#edf2ee;border-radius:99px;overflow:hidden;margin-top:11px}.bar>i{display:block;height:100%;background:linear-gradient(90deg,#176b52,#65a887);border-radius:99px}
+.small{font-size:11px}.actions{display:flex;gap:7px}.actions button{padding:6px 9px;font-size:11px}
+.notice{background:#f2f7f3;border:1px solid #e3eee6;border-radius:10px;padding:12px 13px;color:#607168;font-size:11px;margin-top:14px}
+a{color:var(--brand)}
+@media(max-width:760px){
+ .layout{grid-template-columns:1fr;gap:12px}
+ .side{position:fixed;z-index:20;left:0;right:0;bottom:0;height:auto;padding:7px 8px calc(7px + env(safe-area-inset-bottom));background:rgba(255,255,255,.96);backdrop-filter:blur(16px);border-radius:17px 17px 0 0;border:1px solid #e8eeea;border-bottom:0;box-shadow:0 -8px 30px rgba(22,45,33,.10)}
+ .nav{display:flex;flex-direction:row;gap:3px;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;position:static}
+ .nav::-webkit-scrollbar{display:none}
+ .nav button{display:block;flex:1 0 auto;min-width:62px;white-space:nowrap;text-align:center;padding:10px 8px;font-size:10px;border-radius:10px;min-height:45px}
+ .app{padding:15px 13px calc(105px + env(safe-area-inset-bottom))}
+ .top{align-items:center;position:sticky;top:0;z-index:10;background:var(--bg);padding:5px 0 13px;margin-bottom:18px}
+ .pagehead{align-items:flex-start;margin:5px 0 15px}
+ .pagehead h1{font-size:23px}
+ .grid{grid-template-columns:1fr 1fr;gap:9px}
+ .stat{padding:14px;border-radius:13px}.stat .value{font-size:21px}
+ .panel{padding:16px;border-radius:14px}
+ .field input,.field select{min-height:46px;font-size:16px}
+ button{min-height:44px}
+ .row{gap:10px}.row>.field{min-width:calc(50% - 6px)}.row>button{flex:1}
+ .tablewrap{margin:0 -4px;padding:0 4px}
+}
+@media(max-width:430px){
+ .grid{grid-template-columns:1fr 1fr}.row>.field{min-width:100%}
+ .pagehead h1{font-size:21px}.brand{font-size:22px}
+ .top .sub{font-size:11px}.panel h2{font-size:14px}
+ .stat .value{font-size:19px}.nav button{min-width:59px;padding:9px 6px;font-size:9px}
+}
+@media(min-width:761px){.side{position:sticky;top:20px}}
+</style>
+</head>
+<body>
+<div class="app">
+ <header class="top"><div><div class="brand">trip<span>split</span><span style="display:inline-block;width:7px;height:7px;background:#d5a85c;border-radius:50%;margin:0 0 1px 4px"></span></div><div class="sub">Your group travel wallet</div></div><button id="newTripTop" class="secondary">＋ New trip</button></header>
+ <div class="layout">
+  <aside class="side"><div class="nav">
+   <button class="active" data-page="overview">Overview</button><button data-page="expenses">Expenses</button><button data-page="budget">Budget</button><button data-page="deposits">Member deposits</button><button data-page="reports">Reports & settlement</button><button data-page="settings">Trip & members</button>
+  </div></aside>
+  <main class="main">
+   <div class="pagehead"><div><h1 id="pageTitle">Trip overview</h1><div class="sub" id="tripSub">Create a trip to get started</div></div><span class="pill" id="memberCount">0 members</span></div>
+   <section id="overview" class="page">
+    <div class="grid"><div class="stat"><div class="label">Total budget</div><div class="value" id="sBudget">₹0</div></div><div class="stat"><div class="label">Total spent</div><div class="value" id="sSpent">₹0</div></div><div class="stat"><div class="label">Remaining</div><div class="value" id="sRemain">₹0</div></div></div>
+    <div class="panel"><h2>Trip details</h2><div id="tripDetails" class="muted">No trip created yet. Add your destination, dates and members.</div></div>
+    <div class="two"><div class="panel"><h2>Budget usage</h2><div id="budgetUsage" class="empty">Your budget summary will appear here.</div></div><div class="panel"><h2>Member balances</h2><div id="balances" class="empty">Add members and expenses to see balances.</div></div></div>
+    <div class="panel"><h2>Recent expenses</h2><div id="recentExpenses" class="empty">No expenses added yet.</div></div>
+   </section>
+   <section id="expenses" class="page hidden">
+    <div class="panel"><h2>Add an expense</h2><form id="expenseForm" class="row"><div class="field"><label>Expense title</label><input id="expenseTitle" placeholder="e.g. Hotel booking" required></div><div class="field"><label>Category</label><select id="expenseCategory"></select></div><div class="field"><label>Amount (₹)</label><input id="expenseAmount" type="number" min="1" step="0.01" placeholder="0" required></div><div class="field"><label>Paid by</label><select id="expensePayer" required></select></div><div class="field"><label>Date</label><input id="expenseDate" type="date" required></div><button type="submit">Add expense</button></form><div class="notice">Each expense is split equally across all trip members. The person who paid gets credit for the full amount; everyone, including the payer, receives an equal share of the cost.</div></div>
+    <div class="panel"><h2>All expenses</h2><div id="expenseTable" class="empty">No expenses yet.</div></div>
+   </section>
+   <section id="budget" class="page hidden">
+    <div class="panel"><h2>Set category budgets</h2><form id="budgetForm" class="row"><div class="field"><label>Category</label><select id="budgetCategory"></select></div><div class="field"><label>Budget amount (₹)</label><input id="budgetAmount" type="number" min="1" step="0.01" placeholder="e.g. 5000" required></div><button type="submit">Save budget</button></form></div>
+    <div class="panel"><h2>Budget vs actual</h2><div id="budgetTable" class="empty">Set category budgets to track spending.</div></div>
+   </section>
+   <section id="deposits" class="page hidden">
+    <div class="panel"><h2>Record a member deposit</h2><form id="depositForm" class="row"><div class="field"><label>Member</label><select id="depositMember" required></select></div><div class="field"><label>Amount (₹)</label><input id="depositAmount" type="number" min="1" step="0.01" placeholder="0" required></div><div class="field"><label>Date</label><input id="depositDate" type="date" required></div><div class="field"><label>Note (optional)</label><input id="depositNote" placeholder="Advance for hotel"></div><button type="submit">Add deposit</button></form><div class="notice">Deposits are advance contributions, not expenses. They reduce the amount a member still needs to contribute.</div></div>
+    <div class="panel"><h2>Deposit history</h2><div id="depositTable" class="empty">No deposits recorded yet.</div></div>
+   </section>
+   <section id="reports" class="page hidden">
+    <div class="grid"><div class="stat"><div class="label">Total paid by members</div><div class="value" id="rDeposits">₹0</div></div><div class="stat"><div class="label">Total expenses</div><div class="value" id="rExpenses">₹0</div></div><div class="stat"><div class="label">Unsettled net balance</div><div class="value" id="rNet">₹0</div></div></div>
+    <div class="panel"><h2>Who owes whom</h2><div id="settlement" class="empty">Add expenses to calculate settlement.</div><div class="notice">Settlement is calculated from equal expense shares and payments made. Deposits are shown separately as trip funds and are not treated as payments to a specific expense payer.</div></div>
+    <div class="panel"><h2>Member-wise summary</h2><div id="memberReport" class="empty">No report available yet.</div></div>
+   </section>
+   <section id="settings" class="page hidden">
+    <div class="panel"><h2>Trip details</h2><form id="tripForm"><div class="row"><div class="field"><label>Trip / destination</label><input id="tripPlace" placeholder="e.g. Varanasi & Ayodhya" required></div><div class="field"><label>Start date</label><input id="tripStart" type="date"></div><div class="field"><label>End date</label><input id="tripEnd" type="date"></div></div><div style="margin-top:14px"><button type="submit">Save trip details</button></div></form></div>
+    <div class="panel"><h2>Trip members</h2><form id="memberForm" class="row"><div class="field"><label>Member name</label><input id="memberName" placeholder="Enter member name" required></div><button type="submit">Add member</button></form><div id="memberList" class="memberchips"></div><div class="notice">Add all members before recording expenses. Expenses already entered are split across the members who are in the trip at the time of calculation.</div></div>
+    <div class="panel"><h2>Data & reset</h2><div class="row"><div class="muted small" style="flex:1">Your data is saved in this browser on this device. Export a backup regularly.</div><button class="secondary" id="exportBtn">Export backup</button><button class="danger" id="resetBtn">Reset all data</button></div></div>
+   </section>
+  </main>
+ </div>
+</div>
+<script>
+const CATS=['Travel','Stay','Food','Local transport','Activities','Shopping','Other'];
+const KEY='tripsplit_v1';
+let data=JSON.parse(localStorage.getItem(KEY)||'null')||{trip:{place:'',start:'',end:''},members:[],budgets:{},expenses:[],deposits:[]};
+const $=id=>document.getElementById(id), money=n=>'₹'+Number(n||0).toLocaleString('en-IN',{maximumFractionDigits:2}), esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const sum=a=>a.reduce((x,y)=>x+Number(y||0),0);
+function save(){localStorage.setItem(KEY,JSON.stringify(data));render()}
+function dateNow(){return new Date().toISOString().slice(0,10)}
+function options(el,items,placeholder){el.innerHTML=(placeholder?`<option value="">${placeholder}</option>`:'')+items.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('')}
+function spent(cat){return sum(data.expenses.filter(e=>e.category===cat).map(e=>e.amount))}
+function memberPaid(name){return sum(data.expenses.filter(e=>e.payer===name).map(e=>e.amount))}
+function memberDeposit(name){return sum(data.deposits.filter(d=>d.member===name).map(d=>d.amount))}
+function share(){return data.members.length?sum(data.expenses.map(e=>e.amount))/data.members.length:0}
+function net(name){return memberPaid(name)-share()}
+function table(headers,rows){return `<div class="tablewrap"><table><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows||''}</tbody></table></div>`}
+function expenseRows(list){return list.slice().reverse().map(e=>`<tr><td><strong>${esc(e.title)}</strong><div class="muted small">${esc(e.date)}</div></td><td>${esc(e.category)}</td><td>${esc(e.payer)}</td><td class="right"><strong>${money(e.amount)}</strong></td><td class="right"><button class="danger" onclick="delItem('expenses','${e.id}')">Delete</button></td></tr>`).join('')}
+function render(){
+ $('tripSub').textContent=data.trip.place?`${data.trip.place}${data.trip.start?' · '+data.trip.start:''}${data.trip.end?' – '+data.trip.end:''}`:'Create a trip to get started';
+ $('memberCount').textContent=`${data.members.length} members`;
+ const total=sum(data.expenses.map(e=>e.amount)), budget=sum(Object.values(data.budgets)), remaining=budget-total;
+ $('sBudget').textContent=money(budget);$('sSpent').textContent=money(total);$('sRemain').textContent=money(remaining);
+ $('tripDetails').innerHTML=data.trip.place?`<strong>${esc(data.trip.place)}</strong><div class="muted small">${esc(data.trip.start||'Date not set')}${data.trip.end?' to '+esc(data.trip.end):''}</div><div class="memberchips">${data.members.map(m=>`<span class="chip">${esc(m)}</span>`).join('')}</div>`:'No trip created yet. Add your destination, dates and members.';
+ $('budgetUsage').innerHTML=budget?`<div style="display:flex;justify-content:space-between"><span class="muted">Spent</span><strong>${money(total)} / ${money(budget)}</strong></div><div class="bar"><i style="width:${Math.min(100,total/budget*100)}%"></i></div><div class="small muted" style="margin-top:8px">${remaining>=0?money(remaining)+' remaining':money(-remaining)+' over budget'}</div>`:'No budget set yet.';
+ $('balances').innerHTML=data.members.length?table(['Member','Paid','Fair share','Net'],data.members.map(m=>`<tr><td>${esc(m)}</td><td>${money(memberPaid(m))}</td><td>${money(share())}</td><td class="${net(m)>=0?'positive':'negative'}"><strong>${net(m)>=0?'+':''}${money(net(m))}</strong></td></tr>`).join('')):'Add members to see balances.';
+ $('recentExpenses').innerHTML=data.expenses.length?table(['Expense','Category','Paid by','Amount'],expenseRows(data.expenses.slice(-5)).replace(/<td class="right"><button.*?<\/td>/g,'')):'No expenses added yet.';
+ $('expenseTable').innerHTML=data.expenses.length?table(['Expense','Category','Paid by','Amount',''],expenseRows(data.expenses)):'No expenses yet.';
+ const budgetRows=CATS.filter(c=>data.budgets[c]!==undefined).map(c=>{let b=Number(data.budgets[c]),s=spent(c);return `<tr><td><strong>${c}</strong></td><td>${money(b)}</td><td>${money(s)}</td><td class="${s>b?'negative':'positive'}">${b?Math.round(s/b*100):0}%</td><td><button class="danger" onclick="deleteBudget('${c}')">Remove</button></td></tr>`}).join('');
+ $('budgetTable').innerHTML=budgetRows?table(['Category','Budget','Spent','Used',''],budgetRows):'Set category budgets to track spending.';
+ $('depositTable').innerHTML=data.deposits.length?table(['Member','Date','Note','Amount',''],data.deposits.slice().reverse().map(d=>`<tr><td>${esc(d.member)}</td><td>${esc(d.date)}</td><td>${esc(d.note||'—')}</td><td>${money(d.amount)}</td><td><button class="danger" onclick="delItem('deposits','${d.id}')">Delete</button></td></tr>`).join('')):'No deposits recorded yet.';
+ const dep=sum(data.deposits.map(d=>d.amount));$('rDeposits').textContent=money(dep);$('rExpenses').textContent=money(total);$('rNet').textContent=money(sum(data.members.map(m=>Math.abs(net(m))))/2);
+ $('memberReport').innerHTML=data.members.length?table(['Member','Expenses paid','Deposited','Expense share','Net'],data.members.map(m=>`<tr><td><strong>${esc(m)}</strong></td><td>${money(memberPaid(m))}</td><td>${money(memberDeposit(m))}</td><td>${money(share())}</td><td class="${net(m)>=0?'positive':'negative'}">${net(m)>=0?'+':''}${money(net(m))}</td></tr>`).join('')):'No report available yet.';
+ // Pairwise settlement from expense balances (deposits remain visible as trip funds)
+ let creditors=data.members.map(m=>({name:m,amt:net(m)})).filter(x=>x.amt>0.005).sort((a,b)=>b.amt-a.amt),debtors=data.members.map(m=>({name:m,amt:-net(m)})).filter(x=>x.amt>0.005).sort((a,b)=>b.amt-a.amt),settles=[];
+ let i=0,j=0;while(i<debtors.length&&j<creditors.length){let v=Math.min(debtors[i].amt,creditors[j].amt);settles.push(`<tr><td>${esc(debtors[i].name)}</td><td>${esc(creditors[j].name)}</td><td class="right"><strong>${money(v)}</strong></td></tr>`);debtors[i].amt-=v;creditors[j].amt-=v;if(debtors[i].amt<.005)i++;if(creditors[j].amt<.005)j++}
+ $('settlement').innerHTML=settles.length?table(['Owes','Pays','Amount'],settles):'Everyone is currently settled based on recorded expenses.';
+ options($('expensePayer'),data.members,'Select payer');options($('depositMember'),data.members,'Select member');
+ options($('expenseCategory'),CATS);options($('budgetCategory'),CATS);
+ $('memberList').innerHTML=data.members.map(m=>`<span class="chip">${esc(m)} <a href="#" style="color:#c24141;text-decoration:none;margin-left:5px" onclick="removeMember('${esc(m)}');return false">×</a></span>`).join('')||'<span class="muted small">No members added yet.</span>';
+}
+function delItem(type,id){if(confirm('Delete this record?')){data[type]=data[type].filter(x=>x.id!==id);save()}}
+function deleteBudget(c){delete data.budgets[c];save()}
+function removeMember(m){if(data.expenses.some(e=>e.payer===m)||data.deposits.some(d=>d.member===m)){alert('This member has transactions. Delete their transactions first.');return}if(confirm('Remove '+m+' from this trip?')){data.members=data.members.filter(x=>x!==m);save()}}
+document.querySelectorAll('.nav button').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.nav button').forEach(x=>x.classList.toggle('active',x===b));document.querySelectorAll('.page').forEach(p=>p.classList.toggle('hidden',p.id!==b.dataset.page));$('pageTitle').textContent=({overview:'Trip overview',expenses:'Expenses',budget:'Budget',deposits:'Member deposits',reports:'Reports & settlement',settings:'Trip & members'})[b.dataset.page]}));
+function goSettings(){document.querySelector('[data-page="settings"]').click()}
+$('newTripTop').onclick=goSettings;
+$('tripForm').onsubmit=e=>{e.preventDefault();data.trip={place:$('tripPlace').value.trim(),start:$('tripStart').value,end:$('tripEnd').value};save();alert('Trip details saved.')};
+$('memberForm').onsubmit=e=>{e.preventDefault();let n=$('memberName').value.trim();if(!n)return;if(data.members.some(x=>x.toLowerCase()===n.toLowerCase())){alert('This member is already added.');return}data.members.push(n);$('memberName').value='';save()};
+$('expenseForm').onsubmit=e=>{e.preventDefault();if(!data.members.length){alert('Add trip members first.');goSettings();return}data.expenses.push({id:crypto.randomUUID(),title:$('expenseTitle').value.trim(),category:$('expenseCategory').value,amount:Number($('expenseAmount').value),payer:$('expensePayer').value,date:$('expenseDate').value||dateNow()});e.target.reset();$('expenseDate').value=dateNow();save()};
+$('budgetForm').onsubmit=e=>{e.preventDefault();data.budgets[$('budgetCategory').value]=Number($('budgetAmount').value);e.target.reset();save()};
+$('depositForm').onsubmit=e=>{e.preventDefault();if(!data.members.length){alert('Add trip members first.');goSettings();return}data.deposits.push({id:crypto.randomUUID(),member:$('depositMember').value,amount:Number($('depositAmount').value),date:$('depositDate').value||dateNow(),note:$('depositNote').value.trim()});e.target.reset();$('depositDate').value=dateNow();save()};
+$('exportBtn').onclick=()=>{let blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='tripsplit-backup.json';a.click();URL.revokeObjectURL(a.href)};
+$('resetBtn').onclick=()=>{if(confirm('This will permanently clear all TripSplit data in this browser. Continue?')){data={trip:{place:'',start:'',end:''},members:[],budgets:{},expenses:[],deposits:[]};save();$('tripForm').reset()}};
+$('expenseDate').value=dateNow();$('depositDate').value=dateNow();
+$('tripPlace').value=data.trip.place||'';$('tripStart').value=data.trip.start||'';$('tripEnd').value=data.trip.end||'';
+render();
+</script>
+</body></html>
